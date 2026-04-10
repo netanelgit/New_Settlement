@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>34 יישובים חדשים – מפה אינטראקטיבית</title>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+<style>
+:root {
+  --bg: #0d0f14;
+  --surface: #13161e;
+  --surface2: #1a1f2e;
+  --border: #222840;
+  --accent: #c8a96e;
+  --text: #e8e2d5;
+  --muted: #6a718a;
+  --sidebar-w: 360px;
+
+  --c-north: #e8a44a;
+  --c-green: #52b077;
+  --c-binyamin: #5b9dd4;
+  --c-jericho: #d95f5f;
+  --c-judea: #9b6ed4;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-weight: 300;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  direction: rtl;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 1000;
+}
+
+.topbar-title {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.topbar-title span { color: var(--accent); }
+
+.topbar-sep { width: 1px; height: 24px; background: var(--border); }
+
+.region-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+.region-pills::-webkit-scrollbar { display: none; }
+
+.rpill {
+  padding: 4px 12px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.rpill:hover { border-color: var(--accent); color: var(--accent); }
+.rpill.active { color: #fff; border-color: transparent; }
+.rpill[data-r="all"].active    { background: #333a52; color: var(--text); }
+.rpill[data-r="north"].active  { background: var(--c-north); }
+.rpill[data-r="green"].active  { background: var(--c-green); }
+.rpill[data-r="binyamin"].active { background: var(--c-binyamin); }
+.rpill[data-r="jericho"].active  { background: var(--c-jericho); }
+.rpill[data-r="judea"].active    { background: var(--c-judea); }
+
+.count-badge {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── BODY ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.search-wrap {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  outline: none;
+  direction: rtl;
+  transition: border-color 0.18s;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: var(--accent); }
+
+.list-container {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.list-container::-webkit-scrollbar { width: 4px; }
+.list-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.region-group { }
+
+.region-label {
+  padding: 10px 14px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+
+.region-label::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.settlement-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.settlement-item:hover { background: rgba(255,255,255,0.04); }
+.settlement-item.active { background: rgba(200,169,110,0.08); }
+
+.item-num {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Frank Ruhl Libre', serif;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  margin-top: 2px;
+  direction: ltr;
+}
+
+.item-body { flex: 1; min-width: 0; }
+
+.item-name {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.item-existing {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(80,200,130,0.15);
+  color: #60d090;
+  border: 1px solid rgba(80,200,130,0.2);
+  margin-top: 3px;
+  display: inline-block;
+}
+
+/* ── DETAIL PANEL ── */
+.detail-panel {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 14px;
+  display: none;
+  flex-shrink: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.detail-panel.open { display: block; }
+
+.detail-name {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.detail-location {
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.detail-desc {
+  font-size: 13px;
+  color: #9aa0b8;
+  line-height: 1.7;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.dtag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* ── MAP ── */
+#map {
+  flex: 1;
+  background: #0d0f14;
+}
+
+/* Leaflet dark overrides */
+.leaflet-container { background: #111318; }
+.leaflet-tile { filter: none; }
+.leaflet-popup-content-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  color: var(--text);
+  direction: rtl;
+  font-family: 'Heebo', sans-serif;
+}
+.leaflet-popup-content {
+  margin: 14px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 200px;
+}
+.leaflet-popup-tip { background: var(--surface); }
+.leaflet-popup-close-button { color: var(--muted) !important; font-size: 18px !important; }
+
+.popup-name {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.popup-region { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; margin-bottom: 8px; }
+.popup-loc { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.popup-desc { color: #9aa0b8; font-size: 12px; line-height: 1.6; }
+.popup-existing { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; background: rgba(80,200,130,0.15); color: #60d090; border: 1px solid rgba(80,200,130,0.2); margin-bottom: 6px; }
+
+/* Custom marker */
+.custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  transition: transform 0.15s;
+  font-family: 'Heebo', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+.custom-marker:hover { transform: scale(1.3); z-index: 1000 !important; }
+.custom-marker.pulse::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: pulse 1.5s infinite;
+  opacity: 0.6;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* No results */
+.no-results {
+  padding: 32px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  display: none;
+}
+
+/* Zoom controls ltr */
+.leaflet-control-zoom { direction: ltr; }
+
+/* Mobile */
+@media (max-width: 700px) {
+  :root { --sidebar-w: 100%; }
+  .app-body { flex-direction: column; }
+  .sidebar { width: 100%; height: 45vh; border-left: none; border-top: 1px solid var(--border); order: 2; }
+  #map { height: 55vh; order: 1; }
+  .topbar-title { font-size: 14px; }
+}
+
+/* ── ABC LAYER LEGEND ── */
+.rpill[data-r='abc'].active { background: var(--accent); color: #0d0f14; border-color: transparent; }
+.abc-legend {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 12px;
+  min-width: 118px;
+  direction: rtl;
+  font-family: 'Heebo', sans-serif;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.abc-legend-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.abc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0;
+  color: var(--text);
+}
+.abc-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title"><span>34</span> יישובים חדשים ביו"ש</div>
+  <div class="topbar-sep"></div>
+  <div class="region-pills">
+    <button class="rpill active" data-r="all" onclick="filterRegion('all',this)">הכל</button>
+    <button class="rpill" data-r="north" onclick="filterRegion('north',this)">צפון השומרון</button>
+    <button class="rpill" data-r="green" onclick="filterRegion('green',this)">קו ירוק</button>
+    <button class="rpill" data-r="binyamin" onclick="filterRegion('binyamin',this)">בנימין</button>
+    <button class="rpill" data-r="jericho" onclick="filterRegion('jericho',this)">יריחו / בקעה</button>
+    <button class="rpill" data-r="judea" onclick="filterRegion('judea',this)">יהודה</button>
+  </div>
+  <div class="topbar-sep"></div>
+  <button class="rpill" data-r="abc" onclick="toggleABC(this)">שכבת ABC</button>
+  <div class="count-badge" id="count-badge">34 יישובים</div>
+</div>
+
+<!-- BODY -->
+<div class="app-body">
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="search-wrap">
+      <input class="search-input" id="search" placeholder="חיפוש יישוב..." oninput="searchSettlements(this.value)">
+    </div>
+    <div class="list-container" id="list-container"></div>
+    <div class="no-results" id="no-results">לא נמצאו תוצאות</div>
+    <div class="detail-panel" id="detail-panel"></div>
+  </div>
+
+</div>
+
+<script>
+const REGIONS = {
+  north:    { label: 'צפון השומרון', color: '#e8a44a' },
+  green:    { label: 'קו ירוק / שרון', color: '#52b077' },
+  binyamin: { label: 'בנימין', color: '#5b9dd4' },
+  jericho:  { label: 'יריחו ובקעת הירדן', color: '#d95f5f' },
+  judea:    { label: 'יהודה / גוש עציון / הר חברון', color: '#9b6ed4' },
+};
+
+// All 34 settlements with calibrated coordinates
+const SETTLEMENTS = [
+  // ══ צפון השומרון ══
+  {
+    id:1, num:'01', region:'north',
+    name:'נוּעָה',
+    location:'דרומית לגנים וכדים · אדמות מדינה',
+    desc:'יצירת גוש התיישבות עם גנים וכדים המבודדים, מוקפים בכפרים פלסטיניים.',
+    tags:['גוש התיישבות','אדמות מדינה'],
+    lat:32.432, lng:35.115,
+    ref:'דרומית לגנים (32.45°N, 35.14°E)'
+  },
+  {
+    id:2, num:'02', region:'north',
+    name:'עֵמֶק דּוֹתָן',
+    location:'מזרחית למבוא דותן · כביש 585',
+    desc:'חוליה ברצף: שבי שומרון – חומש – שא-נור – עמק דותן – מבוא דותן.',
+    tags:['רצף התיישבותי','כביש 585'],
+    lat:32.421, lng:35.198,
+    ref:'מזרחית למבוא דותן (32.420°N, 35.175°E)'
+  },
+  {
+    id:3, num:'03', region:'north',
+    name:'אַלּוֹנֵי שׁוֹמְרוֹן',
+    location:'מזרחית לריחן · אדמות מדינה',
+    desc:'מאפיינים עירוניים עם אלפי יחידות דיור. מוקף משלושה כיוונים בכפרים פלסטיניים.',
+    tags:['עירוני','אלפי יח"ד','ריחן'],
+    lat:32.411, lng:35.110,
+    ref:'מזרחית לריחן (32.413°N, 35.066°E)'
+  },
+  {
+    id:4, num:'04', region:'north',
+    name:'תַּעֲנַךְ',
+    location:'מערבית לאזור תעשיה שח"ק',
+    desc:'פוטנציאל בנייה קיים ועיבוי מרחב פיתוח חיננית.',
+    tags:['עיבוי','חיננית','שח"ק'],
+    lat:32.352, lng:35.092,
+    ref:'W of Shahak industrial park (~32.35°N, 35.10°E)'
+  },
+  {
+    id:5, num:'05', region:'north',
+    name:'רוֹם גַּלְבּוֹעַ',
+    location:'מזרחית לגנים וכדים · סמוך למלכישוע',
+    desc:'דרך גישה דרך כביש הגישה למלכישוע שבמחוז צפון.',
+    tags:['גלבוע','מלכישוע'],
+    lat:32.460, lng:35.175,
+    ref:'מזרחית לגנים, ליד מלכישוע (~32.46°N, 35.18°E)'
+  },
+  {
+    id:6, num:'06', region:'north',
+    name:'מַעְיָנוֹת',
+    location:'רכס הגלבוע · דרום-מערבית לקיבוץ בית אלפא',
+    desc:'חיזוק האחיזה ההתיישבותית והביטחונית במרחב התפר.',
+    tags:['מרחב תפר','גלבוע'],
+    lat:32.503, lng:35.384,
+    ref:'SW of Beit Alfa (32.509°N, 35.418°E) on Gilboa ridge'
+  },
+
+  // ══ קו ירוק ══
+  {
+    id:7, num:'07', region:'green',
+    name:'נוֹפֵי יָם',
+    location:'מערבית לסלעית · סמוך לקו הירוק',
+    desc:'מאפיינים עירוניים ואלפי יחידות דיור סמוך לקו הירוק.',
+    tags:['עירוני','אלפי יח"ד','סלעית'],
+    lat:32.181, lng:34.942,
+    ref:'מערבית לסלעית (32.181°N, 35.001°E)'
+  },
+  {
+    id:8, num:'08', region:'green',
+    name:'צַאלוֹן',
+    location:'צפונית לברוכין · מעל כביש 5',
+    desc:'חיבור גוש מערבא לכיוון ברקן וחיזוק האחיזה בכביש 5 האסטרטגי.',
+    tags:['כביש 5','ברוכין','רצף'],
+    lat:32.163, lng:35.127,
+    ref:'N of Bruchin (32.147°N, 35.119°E), above route 5'
+  },
+
+  // ══ בנימין ══
+  {
+    id:9, num:'09', region:'binyamin',
+    name:'צָפְנַת',
+    location:'צפונית לכפר תפוח',
+    desc:'שולט הן על כביש 5 והן על כביש 60 – שני ציר אסטרטגיים מרכזיים.',
+    tags:['כביש 5','כביש 60','שליטה אסטרטגית'],
+    lat:32.109, lng:35.173,
+    ref:'N of Kfar Tapuah (32.097°N, 35.176°E)'
+  },
+  {
+    id:10, num:'10', region:'binyamin',
+    name:'זִיבְדָּה',
+    location:'מזרחית לבית נחמיה · כביש 443',
+    desc:'חיזוק האחיזה ביטחונית במרחב התפר לאורך כביש 443.',
+    tags:['כביש 443','מרחב תפר'],
+    lat:31.904, lng:35.063,
+    ref:'E of Beit Nehemia area, near route 443'
+  },
+  {
+    id:11, num:'11', region:'binyamin',
+    name:'מְבוֹאוֹת יְהוֹשֻׁעַ',
+    location:'כביש 443 · מערבית לטירת בנימין',
+    desc:'יוקם על רכס מערבי לטירת בנימין לאורך כביש 443.',
+    tags:['כביש 443','טירת בנימין'],
+    lat:31.968, lng:35.108,
+    ref:'W of Tirat Binyamin (31.970°N, 35.134°E) on route 443'
+  },
+  {
+    id:12, num:'12', region:'binyamin',
+    name:'נְאוֹת הָרִים',
+    location:'דרום-מזרחית לנוה צוף · כביש 450',
+    desc:'רצף בין נחליאל וגוש טלמונים מדרום לבין נוה צוף מצפון.',
+    tags:['כביש 450','נוה צוף','רצף'],
+    lat:32.014, lng:35.128,
+    ref:'SE of Neve Tzuf/Halamish (~32.025°N, 35.099°E) on route 450'
+  },
+  {
+    id:13, num:'13', region:'binyamin',
+    name:'רָמָתַיִם צוֹפִים',
+    location:'דרום-מזרחית לנעלה · כביש 463',
+    desc:'שולט על "צומת הדואר" – צומת צירים מרכזי במרחב.',
+    tags:['כביש 463','נעלה','צומת הדואר'],
+    lat:31.962, lng:35.062,
+    ref:'SE of Na\'ale (31.967°N, 35.039°E) on route 463'
+  },
+  {
+    id:14, num:'14', region:'binyamin',
+    name:'נָטוּף',
+    location:'דרומית לנעלה · עברו השני של כביש 463',
+    desc:'עיבוי מרחב פיתוח נילי.',
+    tags:['כביש 463','נילי','עיבוי'],
+    lat:31.957, lng:35.044,
+    ref:'S of Na\'ale, other side of route 463'
+  },
+  {
+    id:15, num:'15', region:'binyamin',
+    name:'יִשּׁוּב הַדַּעַת',
+    location:'סמוך לקידה · הסדרת קיים',
+    desc:'הסדרת יישוב שהוקם כיישוב נפרד ועצמאי.',
+    tags:['הסדרת קיים','קידה'],
+    existing:true,
+    lat:32.04705598891341, lng:35.34018295974904, 
+    ref:'Near Kida settlement (~31.94°N, 35.24°E)'
+  },
+
+  // ══ יריחו / בקעה ══
+  {
+    id:16, num:'16', region:'jericho',
+    name:'דִּיָּה',
+    location:'רכס ממערב ליריחו',
+    desc:'שולט על כל מרחב יריחו והגבול המזרחי. רצף בין מבואות יריחו לבין ורד יריחו.',
+    tags:['שליטה אסטרטגית','יריחו','גבול מזרחי'],
+    lat:31.861, lng:35.334,
+    ref:'Ridge W of Jericho (31.867°N, 35.442°E), western approaches'
+  },
+  {
+    id:17, num:'17', region:'jericho',
+    name:'צוּרִי',
+    location:'צפונית לנעמ"ה · כביש 90',
+    desc:'חיזוק האחיזה הביטחונית במרחב הגבול המזרחי.',
+    tags:['כביש 90','גבול מזרחי','נעמ"ה'],
+    lat:32.026, lng:35.448,
+    ref:'N of Na\'ama (~32.017°N, 35.427°E) on route 90'
+  },
+  {
+    id:18, num:'18', region:'jericho',
+    name:'אֱלִישָׁע',
+    location:'דרומית לנעמ"ה · היאחזות נח"ל לשעבר',
+    desc:'עיבוי חלקו הדרומי של מרחב פיתוח פצאל.',
+    tags:['נח"ל לשעבר','פצאל','עיבוי'],
+    lat:32.006, lng:35.432,
+    ref:'S of Na\'ama, former Nahal outpost'
+  },
+  {
+    id:19, num:'19', region:'jericho',
+    name:'חִיּוּתָה',
+    location:'צפונית לבתרון · כביש 90',
+    desc:'שולט על כביש 90 ועל מרחב גדול של הגבול המזרחי.',
+    tags:['כביש 90','גבול מזרחי','בתרון'],
+    lat:32.090, lng:35.427,
+    ref:'N of Batron/Rotem moshav (~32.078°N, 35.420°E)'
+  },
+  {
+    id:20, num:'20', region:'jericho',
+    name:'מְבוֹא תִּרְצָה',
+    location:'דרומית לחמרה · כביש 508',
+    desc:'עיבוי מערך היישובים בבקעת הירדן.',
+    tags:['כביש 508','בקעת הירדן','חמרה'],
+    lat:32.180789702477036, lng:35.43424446052577, 
+    ref:'S of Hamra (~32.136°N, 35.454°E) near route 508'
+  },
+  {
+    id:21, num:'21', region:'jericho',
+    name:'מְבוֹא הַשֶּׁמֶשׁ',
+    location:'דרומית לארגמן · נקודה גבוהה',
+    desc:'שולט על כביש 90 ומרחב הגבול המזרחי.',
+    tags:['כביש 90','ארגמן','גבול מזרחי'],
+    lat:32.16687566378372, lng:35.49998410280229, 
+    ref:'S of Argaman (~32.099°N, 35.541°E) on high point'
+  },
+  {
+    id:22, num:'22', region:'jericho',
+    name:'רַאֲשַׁשׁ',
+    location:'מערבית לפצאל',
+    desc:'רצף התיישבות לרוחב אזור התפר: שומרון – בנימין – בקעת הירדן.',
+    tags:['מרחב תפר','פצאל','רצף'],
+    lat:32.05072062014389, lng:35.41492078841387,
+    ref:'W of Petza\'el (32.044°N, 35.442°E)'
+  },
+  {
+    id:23, num:'23', region:'jericho',
+    name:'גִּבּוֹרֵי דָּוִד',
+    location:'מזרחית לכפר דומא · כביש 505',
+    desc:'חיבור התיישבותי בין מועצות בנימין, שומרון ובקעת הירדן.',
+    tags:['כביש 505','בנימין–שומרון–בקעה'],
+    lat:32.066943665007436, lng:35.37950785809268, 
+    ref:'E of Duma village (~32.111°N, 35.368°E) on route 505'
+  },
+  {
+    id:24, num:'24', region:'jericho',
+    name:'בֵּית צוֹעַר',
+    location:'צפון ים המלח · צומת כביש 90 וכביש 1',
+    desc:'מאפיינים עירוניים לחיזוק השליטה בצומת האסטרטגי.',
+    tags:['עירוני','ים המלח','כביש 90×1'],
+    lat:31.79543470649235, lng:35.47640525370801,
+    ref:'N Dead Sea area, Jericho / Dead Sea junction'
+  },
+
+  // ══ יהודה ══
+  {
+    id:25, num:'25', region:'judea',
+    name:'מַשּׂוּאוֹת הַר',
+    location:'סמוך לבת עין',
+    desc:'בנייה רוויה ועירונית. רצף בין מרחב התפר (נתיב הל"ה) לגוש עציון.',
+    tags:['עירוני','גוש עציון','בת עין'],
+    lat:31.66680716655426, lng:35.060314906056895,
+    ref:'Near Bat Ayin (31.624°N, 35.082°E)'
+  },
+  {
+    id:26, num:'26', region:'judea',
+    name:'שִׁיזָף',
+    location:'דרום-מזרחית לתקוע · ספר המדבר',
+    desc:'שמירת "המסדרון" בשטח C המפריד בין חלקי השמורה ההסכמית.',
+    tags:['שטח C','מדבר יהודה','תקוע'],
+    lat:31.619253093349812, lng:35.23730577793807,
+    ref:'SE of Tekoa (31.651°N, 35.214°E), desert fringe'
+  },
+  {
+    id:27, num:'27', region:'judea',
+    name:'מִצְפֵּה דַּרְגָּה',
+    location:'צפונית למעלה עמוס · ספר המדבר',
+    desc:'שמירת המסדרון בשטח C יחד עם שיזף.',
+    tags:['שטח C','מדבר יהודה','מעלה עמוס'],
+    lat:31.619253093349812, lng:35.23730577793807,
+    ref:'N of Ma\'ale Amos (31.598°N, 35.224°E)'
+  },
+  {
+    id:28, num:'28', region:'judea',
+    name:'גִּבְעוֹת עֲדוּלָם',
+    location:'דרומית לאדרת',
+    desc:'חיזוק האחיזה ההתיישבותית והביטחונית במרחב התפר.',
+    tags:['מרחב תפר','אדרת','עדולם'],
+    lat:31.632788220037064, lng:35.0040775611997,
+    ref:'S of Aderet (31.682°N, 35.028°E), near Green Line'
+  },
+  {
+    id:29, num:'29', region:'judea',
+    name:'מַעֲלֵה עֲרוּגוֹת',
+    location:'מזרחית לאפרת · דרומית לכביש 3157',
+    desc:'חיבור התיישבותי אסטרטגי בין מרחבי השליטה הישראלית מדרום לירושלים.',
+    tags:['כביש 3157','אפרת','דרום ירושלים'],
+    lat:31.643853134186376, lng:35.185983502617596,
+    ref:'E of Efrat (31.661°N, 35.174°E), S of route 3157'
+  },
+  {
+    id:30, num:'30', region:'judea',
+    name:'מַעֲלֵה עֵינָב',
+    location:'צפונית לאשכולות · דרומית לבית חגי',
+    desc:'חיזוק האחיזה במרחב התפר בהר חברון.',
+    tags:['הר חברון','תפר','אשכולות'],
+    lat:31.428466608897075, lng:34.9086760797435,
+    ref:'Between Eshkolot (~31.415°N, 35.003°E) and Beit Hagai (~31.432°N, 35.076°E)'
+  },
+  {
+    id:31, num:'31', region:'judea',
+    name:'מִצְפֵּה יָאִיר',
+    location:'דרום-מזרחית לסוסיא · הסדרת קיים מ-1998',
+    desc:'הסדרת יישוב שהוקם בשנת 1998 כיישוב נפרד ועצמאי.',
+    tags:['הסדרת קיים','1998','סוסיא'],
+    existing:true,
+    lat:31.38353459704579, lng:35.134895711330216,
+    ref:'SE of Susya (31.389°N, 35.116°E)'
+  },
+  {
+    id:32, num:'32', region:'judea',
+    name:'כַּרְמֵי יְהוּדָה',
+    location:'מזרחית לתלם · כביש 35',
+    desc:'חיזוק האחיזה לאורך כביש הרוחב האסטרטגי המחבר מערב המדינה לדרום יהודה.',
+    tags:['כביש 35','תלם','ציר רוחב'],
+    lat:31.56157395349498, lng:35.04487506022517,
+    ref:'E of Telem (inside Israel, ~31.502°N, 34.961°E) near route 35'
+  },
+  {
+    id:33, num:'33', region:'judea',
+    name:'מָגֵד',
+    location:'דרומית לנגוהות',
+    desc:'יצירת גוש התיישבות בר-קיימא עבור נגוהות המבודד.',
+    tags:['נגוהות','גוש התיישבות'],
+    lat:31.49066135537483, lng:34.97245037912954, 
+    ref:'S of Negohot (~31.497°N, 35.059°E)'
+  },
+  {
+    id:34, num:'34', region:'judea',
+    name:'גַּד נָתָן',
+    location:'דרומית למרום יהודה',
+    desc:'השלמת הרצף ההתיישבותי בין גוש עציון לקרית ארבע.',
+    tags:['גוש עציון','קרית ארבע','רצף'],
+    lat:31.568654061771976, lng:35.11704727892439, 
+    ref:'S of Marom Yehuda (~31.437°N, 35.088°E)'
+  },
+];
+
+// ── MAP INIT ──
+const map = L.map('map', {
+  center: [31.95, 35.25],
+  zoom: 9,
+  zoomControl: true,
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 18,
+}).addTo(map);
+
+// ── MARKERS ──
+const markers = {};
+let activeId = null;
+
+function createIcon(region, num, size) {
+  const color = REGIONS[region].color;
+  const s = size || 26;
+  return L.divIcon({
+    className: '',
+    html: `<div class="custom-marker" style="width:${s}px;height:${s}px;background:${color};font-size:${s>26?10:9}px">${num}</div>`,
+    iconSize: [s, s],
+    iconAnchor: [s/2, s/2],
+    popupAnchor: [0, -s/2-4],
+  });
+}
+
+SETTLEMENTS.forEach(s => {
+  const marker = L.marker([s.lat, s.lng], { icon: createIcon(s.region, s.num) });
+  const color = REGIONS[s.region].color;
+  marker.bindPopup(`
+    <div class="popup-name">${s.name}</div>
+    <div class="popup-region" style="color:${color}">${REGIONS[s.region].label}</div>
+    ${s.existing ? '<span class="popup-existing">הסדרת ישוב קיים</span>' : ''}
+    <div class="popup-loc">📍 ${s.location}</div>
+    <div class="popup-desc">${s.desc}</div>
+  `);
+  marker.on('click', () => selectItem(s.id, false));
+  marker.addTo(map);
+  markers[s.id] = marker;
+});
+
+// ── ABC LAYER ──
+const ABC_COLORS = {
+  6:  { fill: '#e8734a', label: 'שטח A' },
+  7:  { fill: '#f0c84a', label: 'שטח B' },
+  9:  { fill: '#52b077', label: 'שמורה' },
+  10: { fill: '#5b9dd4', label: 'H1 (חברון)' },
+  11: { fill: '#c86ed4', label: 'H2 (חברון)' },
+};
+
+let abcLayer = null;
+let abcVisible = false;
+
+const abcLegendCtrl = L.control({ position: 'bottomleft' });
+abcLegendCtrl.onAdd = function() {
+  const div = L.DomUtil.create('div', 'abc-legend');
+  div.id = 'abc-legend';
+  div.style.display = 'none';
+  div.innerHTML =
+    '<div class="abc-legend-title">שטחי ABC</div>' +
+    Object.values(ABC_COLORS).map(c =>
+      '<div class="abc-legend-item"><span class="abc-legend-swatch" style="background:' + c.fill + '"></span>' + c.label + '</div>'
+    ).join('');
+  return div;
+};
+abcLegendCtrl.addTo(map);
+
+function toggleABC(btn) {
+  if (!abcVisible) {
+    if (!abcLayer) {
+      abcLayer = L.esri.featureLayer({
+        url: 'https://services7.arcgis.com/LNelXmPD58p66zmN/ArcGIS/rest/services/ABCarea/FeatureServer/0',
+        style: function(feature) {
+          const c = ABC_COLORS[feature.properties.EZOR] || { fill: '#888888' };
+          return {
+            fillColor: c.fill,
+            fillOpacity: 0.35,
+            color: c.fill,
+            weight: 1.2,
+            opacity: 0.75,
+          };
+        },
+        onEachFeature: function(feature, layer) {
+          const c = ABC_COLORS[feature.properties.EZOR];
+          if (c) layer.bindTooltip(c.label, { sticky: true, direction: 'top' });
+        },
+      });
+    }
+    abcLayer.addTo(map);
+    abcLayer.bringToBack();
+    abcVisible = true;
+    btn.classList.add('active');
+    document.getElementById('abc-legend').style.display = '';
+  } else {
+    map.removeLayer(abcLayer);
+    abcVisible = false;
+    btn.classList.remove('active');
+    document.getElementById('abc-legend').style.display = 'none';
+  }
+}
+
+// ── SIDEBAR BUILD ──
+function buildList(items) {
+  const container = document.getElementById('list-container');
+  container.innerHTML = '';
+
+  // Group by region
+  const regionOrder = ['north','green','binyamin','jericho','judea'];
+  const grouped = {};
+  items.forEach(s => {
+    if (!grouped[s.region]) grouped[s.region] = [];
+    grouped[s.region].push(s);
+  });
+
+  let totalVisible = 0;
+  regionOrder.forEach(r => {
+    if (!grouped[r] || grouped[r].length === 0) return;
+    const group = grouped[r];
+    totalVisible += group.length;
+    const grpDiv = document.createElement('div');
+    grpDiv.className = 'region-group';
+
+    const label = document.createElement('div');
+    label.className = 'region-label';
+    label.style.setProperty('--dot-color', REGIONS[r].color);
+    label.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${REGIONS[r].color};display:inline-block;flex-shrink:0"></span>${REGIONS[r].label} <span style="opacity:0.5">(${group.length})</span>`;
+    grpDiv.appendChild(label);
+
+    group.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'settlement-item';
+      item.id = `item-${s.id}`;
+      item.dataset.id = s.id;
+      item.innerHTML = `
+        <div class="item-dot" style="background:${REGIONS[s.region].color}"></div>
+        <div class="item-body">
+          <div class="item-name">${s.name}</div>
+          <div class="item-sub">${s.location}</div>
+          ${s.existing ? '<div class="item-existing">הסדרת קיים</div>' : ''}
+        </div>
+        <div class="item-num">${s.num}</div>
+      `;
+      item.onclick = () => selectItem(s.id, true);
+      grpDiv.appendChild(item);
+    });
+
+    container.appendChild(grpDiv);
+  });
+
+  document.getElementById('count-badge').textContent = `${totalVisible} יישובים`;
+  document.getElementById('no-results').style.display = totalVisible === 0 ? 'block' : 'none';
+}
+
+// ── SELECT ──
+function selectItem(id, flyTo) {
+  // Deactivate previous
+  if (activeId) {
+    const prev = document.getElementById(`item-${activeId}`);
+    if (prev) prev.classList.remove('active');
+  }
+  activeId = id;
+
+  const el = document.getElementById(`item-${id}`);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  const s = SETTLEMENTS.find(x => x.id === id);
+  if (!s) return;
+
+  if (flyTo) {
+    map.flyTo([s.lat, s.lng], 13, { duration: 0.8 });
+  }
+  markers[id].openPopup();
+
+  // Detail panel
+  const panel = document.getElementById('detail-panel');
+  const color = REGIONS[s.region].color;
+  panel.innerHTML = `
+    <div class="detail-name">${s.name}</div>
+    <div class="detail-location">📍 ${s.location}</div>
+    ${s.existing ? '<div class="item-existing" style="margin-bottom:8px">הסדרת ישוב קיים</div>' : ''}
+    <div class="detail-desc">${s.desc}</div>
+    <div class="detail-tags">${s.tags.map(t=>`<span class="dtag">${t}</span>`).join('')}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">🗺️ קואורדינטות מוערכות: ${s.lat.toFixed(3)}°N, ${s.lng.toFixed(3)}°E</div>
+  `;
+  panel.classList.add('open');
+}
+
+// ── FILTER ──
+let currentRegion = 'all';
+function filterRegion(r, btn) {
+  currentRegion = r;
+  document.querySelectorAll('.rpill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const visible = r === 'all' ? SETTLEMENTS : SETTLEMENTS.filter(s => s.region === r);
+  const hidden = SETTLEMENTS.filter(s => !visible.includes(s));
+
+  visible.forEach(s => {
+    markers[s.id].setOpacity(1);
+    markers[s.id].setZIndexOffset(0);
+  });
+  hidden.forEach(s => {
+    markers[s.id].setOpacity(0.15);
+    markers[s.id].setZIndexOffset(-1000);
+  });
+
+  buildList(visible);
+
+  if (r !== 'all' && visible.length > 0) {
+    const bounds = L.latLngBounds(visible.map(s => [s.lat, s.lng]));
+    map.flyToBounds(bounds, { padding: [50, 50], duration: 0.7 });
+  } else if (r === 'all') {
+    map.flyTo([31.95, 35.25], 9, { duration: 0.6 });
+  }
+
+  document.getElementById('detail-panel').classList.remove('open');
+  activeId = null;
+}
+
+// ── SEARCH ──
+function searchSettlements(q) {
+  const term = q.trim().toLowerCase();
+  if (!term) {
+    filterRegion(currentRegion, document.querySelector(`.rpill[data-r="${currentRegion}"]`));
+    return;
+  }
+  const base = currentRegion === 'all' ? SETTLEMENTS : SETTLEMENTS.filter(s => s.region === currentRegion);
+  const results = base.filter(s =>
+    s.name.toLowerCase().includes(term) ||
+    s.location.toLowerCase().includes(term) ||
+    s.desc.toLowerCase().includes(term) ||
+    s.tags.some(t => t.toLowerCase().includes(term))
+  );
+  buildList(results);
+  results.forEach(s => markers[s.id].setOpacity(1));
+  SETTLEMENTS.filter(s => !results.includes(s)).forEach(s => markers[s.id].setOpacity(0.15));
+}
+
+// ── INIT ──
+buildList(SETTLEMENTS);
+</script>
+</body>
+</html>
