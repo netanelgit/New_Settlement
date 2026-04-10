@@ -418,6 +418,43 @@ body {
   flex-shrink: 0;
   opacity: 0.85;
 }
+
+/* ── STATE LAND LAYER LEGEND ── */
+.rpill[data-r='state'].active { background: #4a8fe8; color: #fff; border-color: transparent; }
+.state-legend {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 12px;
+  min-width: 180px;
+  direction: rtl;
+  font-family: 'Heebo', sans-serif;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  margin-top: 6px;
+}
+.state-legend-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #4a8fe8;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.state-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0;
+  color: var(--text);
+}
+.state-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
 </style>
 </head>
 <body>
@@ -428,14 +465,15 @@ body {
   <div class="topbar-sep"></div>
   <div class="region-pills">
     <button class="rpill active" data-r="all" onclick="filterRegion('all',this)">הכל</button>
-    <button class="rpill" data-r="north" onclick="filterRegion('north',this)">צפון השומרון</button>
-    <button class="rpill" data-r="green" onclick="filterRegion('green',this)">קו ירוק</button>
+    <button class="rpill" data-r="north" onclick="filterRegion('north',this)">שומרון</button>
+    <!-- <button class="rpill" data-r="green" onclick="filterRegion('green',this)">שומרון</button> -->
     <button class="rpill" data-r="binyamin" onclick="filterRegion('binyamin',this)">בנימין</button>
     <button class="rpill" data-r="jericho" onclick="filterRegion('jericho',this)">יריחו / בקעה</button>
     <button class="rpill" data-r="judea" onclick="filterRegion('judea',this)">יהודה</button>
   </div>
   <div class="topbar-sep"></div>
   <button class="rpill" data-r="abc" onclick="toggleABC(this)">שכבת ABC</button>
+  <button class="rpill" data-r="state" onclick="toggleStateLand(this)">אדמות מדינה</button>
   <div class="count-badge" id="count-badge">34 יישובים</div>
 </div>
 
@@ -460,7 +498,7 @@ body {
 <script>
 const REGIONS = {
   north:    { label: 'צפון השומרון', color: '#e8a44a' },
-  green:    { label: 'קו ירוק / שרון', color: '#52b077' },
+  green:    { label: 'שומרון / שרון', color: '#52b077' },
   binyamin: { label: 'בנימין', color: '#5b9dd4' },
   jericho:  { label: 'יריחו ובקעת הירדן', color: '#d95f5f' },
   judea:    { label: 'יהודה / גוש עציון / הר חברון', color: '#9b6ed4' },
@@ -468,15 +506,24 @@ const REGIONS = {
 
 // All 34 settlements with calibrated coordinates
 const SETTLEMENTS = [
-  // ══ צפון השומרון ══
+  // ══שומרון ══
   {
     id:1, num:'01', region:'north',
     name:'נוּעָה',
     location:'דרומית לגנים וכדים · אדמות מדינה',
     desc:'יצירת גוש התיישבות עם גנים וכדים המבודדים, מוקפים בכפרים פלסטיניים.',
     tags:['גוש התיישבות','אדמות מדינה'],
-    lat:32.432, lng:35.115,
+    lat:32.44254324078365, lng:35.32454623297063,
     ref:'דרומית לגנים (32.45°N, 35.14°E)'
+  },
+  {
+    id:4, num:'04', region:'north',
+    name:'תַּעֲנַךְ',
+    location:'מערבית לאזור תעשיה שח"ק',
+    desc:'פוטנציאל בנייה קיים ועיבוי מרחב פיתוח חיננית.',
+    tags:['עיבוי','חיננית','שח"ק'],
+    lat:32.48932163712458, lng:35.14921593337439, 
+    ref:'W of Shahak industrial park (~32.35°N, 35.10°E)'
   },
   {
     id:2, num:'02', region:'north',
@@ -484,7 +531,7 @@ const SETTLEMENTS = [
     location:'מזרחית למבוא דותן · כביש 585',
     desc:'חוליה ברצף: שבי שומרון – חומש – שא-נור – עמק דותן – מבוא דותן.',
     tags:['רצף התיישבותי','כביש 585'],
-    lat:32.421, lng:35.198,
+    lat:32.40687335282143, lng:35.2202434677344, 
     ref:'מזרחית למבוא דותן (32.420°N, 35.175°E)'
   },
   {
@@ -493,17 +540,8 @@ const SETTLEMENTS = [
     location:'מזרחית לריחן · אדמות מדינה',
     desc:'מאפיינים עירוניים עם אלפי יחידות דיור. מוקף משלושה כיוונים בכפרים פלסטיניים.',
     tags:['עירוני','אלפי יח"ד','ריחן'],
-    lat:32.411, lng:35.110,
+    lat:32.461820217536854, lng:35.1572746640762, 
     ref:'מזרחית לריחן (32.413°N, 35.066°E)'
-  },
-  {
-    id:4, num:'04', region:'north',
-    name:'תַּעֲנַךְ',
-    location:'מערבית לאזור תעשיה שח"ק',
-    desc:'פוטנציאל בנייה קיים ועיבוי מרחב פיתוח חיננית.',
-    tags:['עיבוי','חיננית','שח"ק'],
-    lat:32.352, lng:35.092,
-    ref:'W of Shahak industrial park (~32.35°N, 35.10°E)'
   },
   {
     id:5, num:'05', region:'north',
@@ -511,7 +549,7 @@ const SETTLEMENTS = [
     location:'מזרחית לגנים וכדים · סמוך למלכישוע',
     desc:'דרך גישה דרך כביש הגישה למלכישוע שבמחוז צפון.',
     tags:['גלבוע','מלכישוע'],
-    lat:32.460, lng:35.175,
+    lat:32.44471751269839, lng:35.40785710027538,  
     ref:'מזרחית לגנים, ליד מלכישוע (~32.46°N, 35.18°E)'
   },
   {
@@ -520,47 +558,44 @@ const SETTLEMENTS = [
     location:'רכס הגלבוע · דרום-מערבית לקיבוץ בית אלפא',
     desc:'חיזוק האחיזה ההתיישבותית והביטחונית במרחב התפר.',
     tags:['מרחב תפר','גלבוע'],
-    lat:32.503, lng:35.384,
+    lat:32.51048400364016, lng:35.39195803886771, 
     ref:'SW of Beit Alfa (32.509°N, 35.418°E) on Gilboa ridge'
   },
-
-  // ══ קו ירוק ══
   {
-    id:7, num:'07', region:'green',
+    id:7, num:'07', region:'north',
     name:'נוֹפֵי יָם',
     location:'מערבית לסלעית · סמוך לקו הירוק',
     desc:'מאפיינים עירוניים ואלפי יחידות דיור סמוך לקו הירוק.',
     tags:['עירוני','אלפי יח"ד','סלעית'],
-    lat:32.181, lng:34.942,
+    lat:32.24419025553363, lng:35.02856574507494, 
     ref:'מערבית לסלעית (32.181°N, 35.001°E)'
   },
   {
-    id:8, num:'08', region:'green',
+    id:8, num:'08', region:'north',
     name:'צַאלוֹן',
     location:'צפונית לברוכין · מעל כביש 5',
     desc:'חיבור גוש מערבא לכיוון ברקן וחיזוק האחיזה בכביש 5 האסטרטגי.',
     tags:['כביש 5','ברוכין','רצף'],
-    lat:32.163, lng:35.127,
+    lat:32.097065848878394, lng:35.10050786811566, 
     ref:'N of Bruchin (32.147°N, 35.119°E), above route 5'
   },
-
-  // ══ בנימין ══
   {
-    id:9, num:'09', region:'binyamin',
-    name:'צָפְנַת',
-    location:'צפונית לכפר תפוח',
-    desc:'שולט הן על כביש 5 והן על כביש 60 – שני ציר אסטרטגיים מרכזיים.',
-    tags:['כביש 5','כביש 60','שליטה אסטרטגית'],
-    lat:32.109, lng:35.173,
-    ref:'N of Kfar Tapuah (32.097°N, 35.176°E)'
-  },
+      id:9, num:'09', region:'north',
+      name:'צָפְנַת',
+      location:'צפונית לכפר תפוח',
+      desc:'שולט הן על כביש 5 והן על כביש 60 – שני ציר אסטרטגיים מרכזיים.',
+      tags:['כביש 5','כביש 60','שליטה אסטרטגית'],
+      lat:32.12716065606855, lng:35.250007061296536, 
+      ref:'N of Kfar Tapuah (32.097°N, 35.176°E)'
+    },
+// ══ בנימין ══
   {
     id:10, num:'10', region:'binyamin',
     name:'זִיבְדָּה',
     location:'מזרחית לבית נחמיה · כביש 443',
     desc:'חיזוק האחיזה ביטחונית במרחב התפר לאורך כביש 443.',
     tags:['כביש 443','מרחב תפר'],
-    lat:31.904, lng:35.063,
+    lat:31.973786749220668, lng:34.97615878551716, 
     ref:'E of Beit Nehemia area, near route 443'
   },
   {
@@ -569,7 +604,7 @@ const SETTLEMENTS = [
     location:'כביש 443 · מערבית לטירת בנימין',
     desc:'יוקם על רכס מערבי לטירת בנימין לאורך כביש 443.',
     tags:['כביש 443','טירת בנימין'],
-    lat:31.968, lng:35.108,
+    lat:31.87574111661682, lng:35.09895950404906, 
     ref:'W of Tirat Binyamin (31.970°N, 35.134°E) on route 443'
   },
   {
@@ -578,7 +613,7 @@ const SETTLEMENTS = [
     location:'דרום-מזרחית לנוה צוף · כביש 450',
     desc:'רצף בין נחליאל וגוש טלמונים מדרום לבין נוה צוף מצפון.',
     tags:['כביש 450','נוה צוף','רצף'],
-    lat:32.014, lng:35.128,
+    lat:31.991802737834785, lng:35.11563919626182, 
     ref:'SE of Neve Tzuf/Halamish (~32.025°N, 35.099°E) on route 450'
   },
   {
@@ -587,7 +622,7 @@ const SETTLEMENTS = [
     location:'דרום-מזרחית לנעלה · כביש 463',
     desc:'שולט על "צומת הדואר" – צומת צירים מרכזי במרחב.',
     tags:['כביש 463','נעלה','צומת הדואר'],
-    lat:31.962, lng:35.062,
+    lat:31.943224266366187, lng:35.094640891184845, 
     ref:'SE of Na\'ale (31.967°N, 35.039°E) on route 463'
   },
   {
@@ -596,7 +631,7 @@ const SETTLEMENTS = [
     location:'דרומית לנעלה · עברו השני של כביש 463',
     desc:'עיבוי מרחב פיתוח נילי.',
     tags:['כביש 463','נילי','עיבוי'],
-    lat:31.957, lng:35.044,
+    lat:31.954467708377422, lng:35.06220935263177, 
     ref:'S of Na\'ale, other side of route 463'
   },
   {
@@ -617,7 +652,7 @@ const SETTLEMENTS = [
     location:'רכס ממערב ליריחו',
     desc:'שולט על כל מרחב יריחו והגבול המזרחי. רצף בין מבואות יריחו לבין ורד יריחו.',
     tags:['שליטה אסטרטגית','יריחו','גבול מזרחי'],
-    lat:31.861, lng:35.334,
+    lat:31.866068923274877, lng:35.371070674433064, 
     ref:'Ridge W of Jericho (31.867°N, 35.442°E), western approaches'
   },
   {
@@ -626,7 +661,7 @@ const SETTLEMENTS = [
     location:'צפונית לנעמ"ה · כביש 90',
     desc:'חיזוק האחיזה הביטחונית במרחב הגבול המזרחי.',
     tags:['כביש 90','גבול מזרחי','נעמ"ה'],
-    lat:32.026, lng:35.448,
+    lat:31.92872393901421, lng:35.47106875393714, 
     ref:'N of Na\'ama (~32.017°N, 35.427°E) on route 90'
   },
   {
@@ -635,7 +670,7 @@ const SETTLEMENTS = [
     location:'דרומית לנעמ"ה · היאחזות נח"ל לשעבר',
     desc:'עיבוי חלקו הדרומי של מרחב פיתוח פצאל.',
     tags:['נח"ל לשעבר','פצאל','עיבוי'],
-    lat:32.006, lng:35.432,
+    lat:31.8863870231435, lng:35.48284529044662, 
     ref:'S of Na\'ama, former Nahal outpost'
   },
   {
@@ -644,7 +679,7 @@ const SETTLEMENTS = [
     location:'צפונית לבתרון · כביש 90',
     desc:'שולט על כביש 90 ועל מרחב גדול של הגבול המזרחי.',
     tags:['כביש 90','גבול מזרחי','בתרון'],
-    lat:32.090, lng:35.427,
+    lat:32.28715746794672, lng:35.51888366456298, 
     ref:'N of Batron/Rotem moshav (~32.078°N, 35.420°E)'
   },
   {
@@ -794,8 +829,15 @@ const map = L.map('map', {
   zoomControl: true,
 });
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap',
+// Aerial imagery (ESRI World Imagery)
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+  maxZoom: 18,
+}).addTo(map);
+
+// Hebrew labels layer on top of imagery
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '',
   maxZoom: 18,
 }).addTo(map);
 
@@ -887,6 +929,64 @@ function toggleABC(btn) {
     abcVisible = false;
     btn.classList.remove('active');
     document.getElementById('abc-legend').style.display = 'none';
+  }
+}
+
+// ── STATE LAND LAYER ──
+const STATE_COLORS = {
+  2: { fill: '#2563d4', label: 'אדמות מדינה אחרי 98' },
+  4: { fill: '#38aadc', label: 'אדמות מדינה אחרי 2004' },
+  5: { fill: '#0d4a8a', label: 'אדמות מדינה טאבו' },
+};
+
+let stateLandLayer = null;
+let stateLandVisible = false;
+
+const stateLegendCtrl = L.control({ position: 'bottomleft' });
+stateLegendCtrl.onAdd = function() {
+  const div = L.DomUtil.create('div', 'state-legend');
+  div.id = 'state-legend';
+  div.style.display = 'none';
+  div.innerHTML =
+    '<div class="state-legend-title">אדמות מדינה</div>' +
+    Object.values(STATE_COLORS).map(c =>
+      '<div class="state-legend-item"><span class="state-legend-swatch" style="background:' + c.fill + '"></span>' + c.label + '</div>'
+    ).join('');
+  return div;
+};
+stateLegendCtrl.addTo(map);
+
+function toggleStateLand(btn) {
+  if (!stateLandVisible) {
+    if (!stateLandLayer) {
+      stateLandLayer = L.esri.featureLayer({
+        url: 'https://services7.arcgis.com/LNelXmPD58p66zmN/arcgis/rest/services/%D7%9E%D7%A4%D7%AA_%D7%97%D7%95%D7%A4%D7%A9_%D7%94%D7%9E%D7%99%D7%93%D7%A2_%D7%9E%D7%A2%D7%95%D7%93%D7%9B%D7%A0%D7%AA_24_7_24_WFL1/FeatureServer/42',
+        style: function(feature) {
+          const c = STATE_COLORS[feature.properties.TYPE] || { fill: '#888888' };
+          return {
+            fillColor: c.fill,
+            fillOpacity: 0.45,
+            color: c.fill,
+            weight: 1,
+            opacity: 0.8,
+          };
+        },
+        onEachFeature: function(feature, layer) {
+          const c = STATE_COLORS[feature.properties.TYPE];
+          if (c) layer.bindTooltip(c.label, { sticky: true, direction: 'top' });
+        },
+      });
+    }
+    stateLandLayer.addTo(map);
+    stateLandLayer.bringToBack();
+    stateLandVisible = true;
+    btn.classList.add('active');
+    document.getElementById('state-legend').style.display = '';
+  } else {
+    map.removeLayer(stateLandLayer);
+    stateLandVisible = false;
+    btn.classList.remove('active');
+    document.getElementById('state-legend').style.display = 'none';
   }
 }
 
