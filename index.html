@@ -384,12 +384,112 @@ body {
 .leaflet-control-zoom { direction: ltr; }
 
 /* Mobile */
+/* ── MOBILE ── */
+.mob-layers-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 5px 10px;
+  cursor: pointer;
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.mob-layers-drawer { display: none; }
+
 @media (max-width: 700px) {
   :root { --sidebar-w: 100%; }
-  .app-body { flex-direction: column; }
-  .sidebar { width: 100%; height: 45vh; border-left: none; border-top: 1px solid var(--border); order: 2; }
-  #map { height: 55vh; order: 1; }
+
+  /* Topbar */
+  .topbar { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
   .topbar-title { font-size: 14px; }
+  .topbar-sep { display: none; }
+  .region-pills { order: 3; width: 100%; }
+  .count-badge { font-size: 11px; }
+  button[data-r='abc'], button[data-r='state'] { display: none; }
+  .mob-layers-btn { display: flex; }
+
+  /* Layers drawer */
+  .mob-layers-drawer {
+    display: block;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    padding: 0 16px 32px;
+    z-index: 3000;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  }
+  .mob-layers-drawer.open { transform: translateY(0); }
+  .mob-drawer-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 16px;
+  }
+  .mob-drawer-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 14px; text-align: right; }
+  .mob-drawer-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .mob-layer-tile {
+    flex: 1; padding: 14px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'Heebo', sans-serif;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .mob-layer-tile.active-abc  { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
+  .mob-layer-tile.active-state { border-color: #4a8fe8; color: #4a8fe8; background: rgba(74,143,232,0.1); }
+  .mob-drawer-close {
+    width: 100%; margin-top: 8px; padding: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--muted);
+    font-family: 'Heebo', sans-serif; font-size: 13px; cursor: pointer;
+  }
+  .mob-drawer-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 2999;
+  }
+  .mob-drawer-overlay.open { display: block; }
+
+  /* Map full height */
+  .app-body { flex-direction: column; }
+  #map { height: 100dvh; order: 1; }
+
+  /* Sidebar as pull-up sheet */
+  .sidebar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    width: 100%; height: 52dvh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    z-index: 2000; order: 2;
+    transform: translateY(calc(100% - 48px));
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  }
+  .sidebar.expanded { transform: translateY(0); }
+  .sidebar-handle {
+    display: flex; align-items: center; justify-content: center;
+    height: 48px; cursor: pointer; flex-shrink: 0;
+    border-radius: 16px 16px 0 0; touch-action: none; user-select: none;
+  }
+  .sidebar-handle-bar { width: 36px; height: 4px; background: var(--border); border-radius: 2px; }
+
+  /* Push legends above sidebar handle */
+  .leaflet-bottom.leaflet-left { bottom: 56px; }
+  .leaflet-control-zoom { margin-bottom: 60px !important; }
 }
 
 /* ── ABC LAYER LEGEND ── */
@@ -464,6 +564,7 @@ body {
   flex-shrink: 0;
   opacity: 0.85;
 }
+.sidebar-handle { display: none; }
 </style>
 </head>
 <body>
@@ -483,6 +584,7 @@ body {
   <div class="topbar-sep"></div>
   <button class="rpill" data-r="abc" onclick="toggleABC(this)">שכבת ABC</button>
   <button class="rpill" data-r="state" onclick="toggleStateLand(this)">אדמות מדינה</button>
+  <button class="mob-layers-btn" onclick="openLayersDrawer()">⚙ שכבות</button>
   <div class="count-badge" id="count-badge">34 יישובים</div>
 </div>
 
@@ -493,7 +595,10 @@ body {
   <div id="map"></div>
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-handle" id="sidebar-handle" onclick="toggleSidebar()">
+      <div class="sidebar-handle-bar"></div>
+    </div>
     <div class="search-wrap">
       <input class="search-input" id="search" placeholder="חיפוש יישוב..." oninput="searchSettlements(this.value)">
     </div>
@@ -999,6 +1104,43 @@ function toggleStateLand(btn) {
   }
 }
 
+// ── MOBILE UI ──
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (!sb) return;
+  sb.classList.toggle('expanded');
+}
+
+function openLayersDrawer() {
+  document.getElementById('mob-layers-drawer').classList.add('open');
+  document.getElementById('mob-overlay').classList.add('open');
+}
+function closeLayersDrawer() {
+  document.getElementById('mob-layers-drawer').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('open');
+}
+
+function mobToggleABC(tile) {
+  const desktopBtn = document.querySelector('button[data-r="abc"]');
+  toggleABC(desktopBtn);
+  tile.classList.toggle('active-abc');
+}
+function mobToggleState(tile) {
+  const desktopBtn = document.querySelector('button[data-r="state"]');
+  toggleStateLand(desktopBtn);
+  tile.classList.toggle('active-state');
+}
+
+// Expand sidebar when a marker is clicked on mobile
+const _origSelect = selectItem;
+selectItem = function(id, flyTo) {
+  _origSelect(id, flyTo);
+  if (window.innerWidth <= 700) {
+    const sb = document.getElementById('sidebar');
+    if (sb && !sb.classList.contains('expanded')) sb.classList.add('expanded');
+  }
+};
+
 // ── SIDEBAR BUILD ──
 function buildList(items) {
   const container = document.getElementById('list-container');
@@ -1142,5 +1284,16 @@ function searchSettlements(q) {
 // ── INIT ──
 buildList(SETTLEMENTS);
 </script>
+<!-- MOBILE LAYERS DRAWER -->
+<div class="mob-drawer-overlay" id="mob-overlay" onclick="closeLayersDrawer()"></div>
+<div class="mob-layers-drawer" id="mob-layers-drawer">
+  <div class="mob-drawer-handle"></div>
+  <div class="mob-drawer-title">שכבות מפה</div>
+  <div class="mob-drawer-row">
+    <button class="mob-layer-tile" id="mob-abc-tile" onclick="mobToggleABC(this)">שטחי ABC</button>
+    <button class="mob-layer-tile" id="mob-state-tile" onclick="mobToggleState(this)">אדמות מדינה</button>
+  </div>
+  <button class="mob-drawer-close" onclick="closeLayersDrawer()">סגור</button>
+</div>
 </body>
 </html>
